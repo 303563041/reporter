@@ -1,4 +1,3 @@
-# build
 FROM golang:1.14.7-alpine3.12 AS build
 WORKDIR /go/src/${owner:-github.com/IzakMarais}/reporter
 RUN apk update && apk add make git
@@ -9,12 +8,13 @@ RUN make build
 FROM alpine:3.12
 COPY util/texlive.profile /
 
-RUN PACKAGES="wget libswitch-perl" \
+ENV PYTHONUNBUFFERED=1
+RUN PACKAGES="wget perl-switch fontconfig fontconfig-dev" \
         && apk update \
         && apk add $PACKAGES \
         && apk add ca-certificates \
         && wget -qO- \
-          "https://github.com/yihui/tinytex/raw/master/tools/install-unx.sh" | \
+          "https://github.com/yihui/tinytex/raw/main/tools/install-unx.sh" | \
           sh -s - --admin --no-path \
         && mv ~/.TinyTeX /opt/TinyTeX \
         && /opt/TinyTeX/bin/*/tlmgr path add \
@@ -23,6 +23,14 @@ RUN PACKAGES="wget libswitch-perl" \
         && chmod -R g+w /opt/TinyTeX \
         && chmod -R g+wx /opt/TinyTeX/bin \
         && tlmgr install epstopdf-pkg \
+        # install python
+        && apk add --update --no-cache python3 && ln -sf python3 /usr/bin/python \
+        && python3 -m ensurepip \
+        && pip3 install --no-cache --upgrade pip setuptools \
+        && apk add build-base \
+        && apk add python3-dev \
+        && apk add gpgme-dev \
+        && apk add libc-dev \
         # Cleanup
         && apk del --purge -qq $PACKAGES \
         && apk del --purge -qq \
